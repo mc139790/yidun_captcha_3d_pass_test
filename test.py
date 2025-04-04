@@ -20,7 +20,7 @@ color_dict = {
     '绿': [([40, 100, 132], [80, 255, 255])],
     '蓝': [([100, 100, 132], [140, 255, 255])],
     '黄': [([20, 100, 132], [40, 255, 255])],
-    '灰': [([0, 0, 100], [180, 18, 255])],
+    '灰': [([0, 0, 0], [180, 64, 192])],
 }
 
 
@@ -91,15 +91,19 @@ async def progress_captcha(page: Page):
 async def progress_img(page: Page, img, text_type, match_groups):
     if text_type == 'color_only':
         color, _ = match_groups
-        if color == '灰': # 无法和背景区分，所以不处理
-            return False
-        color_ranges = color_dict[color]
         hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        color_ranges = color_dict[color]
         mask = np.zeros(hsv_img.shape[:2], dtype=np.uint8)
         for lower, upper in color_ranges:
             lower = np.array(lower, dtype=np.uint8)
             upper = np.array(upper, dtype=np.uint8)
             mask += cv2.inRange(hsv_img, lower, upper)
+        if color == '灰':
+            sobelx = cv2.Sobel(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.CV_8U, 1, 0, ksize=3)
+            cv2.imwrite('sobelx.png', sobelx)
+            sobelx_bin = cv2.inRange(sobelx, 32, 255)
+            cv2.imwrite('sobelx_bin.png', sobelx_bin)
+            mask = cv2.bitwise_and(mask, sobelx_bin)
         cv2.imwrite('mask.png', mask)
         cv2.blur(mask, (9, 9), mask)
         cv2.imwrite('blur_mask.png', mask)
